@@ -1,8 +1,8 @@
 TARGET=server
-SRC = $(wildcard *.cpp *.c)
+SRC = $(wildcard $(shell pwd)/public/src/*.cpp $(shell pwd)/src/*.cpp)
 OBJ = $(patsubst %.cpp *.c,%.o,$(SRC))
 DEFS =
-CFLAGS = -g
+CFLAGS = -g -I $(shell pwd)/public/include -I $(shell pwd)/include
 CC =g++
 LIBS =  -lpthread
 $(TARGET):$(OBJ)

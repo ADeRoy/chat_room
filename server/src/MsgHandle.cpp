@@ -1,6 +1,52 @@
 #include "MsgHandle.h"
 #include "common.h"
 
+std::shared_ptr<SessionMng> SessionMng::m_pSessionMng = nullptr; 
+
+int SessionMng::addSession(SessionPtr newSession,int fd){
+    std::lock_guard<std::mutex> guard(m_gSessionMapLock);
+    // LOGINFO("insert fd:%d\n",fd);
+    std::pair<SessionMapIter, bool> bRet = m_gSessionMap.insert(std::make_pair(fd, newSession));
+    if (!bRet.second)
+    {
+        LOGINFO("insert map err\n");
+        return -1;
+    }
+    return 0;
+}
+int SessionMng::delSession(int fd){
+    std::lock_guard<std::mutex> guard(m_gSessionMapLock);
+    auto iter = m_gSessionMap.find(fd);
+    if (iter != m_gSessionMap.end())
+    {
+        SessionPtr sp = iter->second;
+        if (sp != nullptr)
+        {
+            // 可能需要清理资源
+            // sp->closeStream();
+        }
+        m_gSessionMap.erase(iter);
+    }
+    return 0;
+}
+int SessionMng::handleSession(int fd){
+    std::lock_guard<std::mutex> guard(m_gSessionMapLock);
+    auto iter = m_gSessionMap.find(fd);
+    if (iter != m_gSessionMap.end())
+    {
+        SessionPtr sp = iter->second;
+        if (sp != nullptr)
+        {
+            if (sp->readEvent() == RET_EXIT)
+            {
+                m_gSessionMap.erase(iter);
+                return -1;
+            }
+        }
+    }
+    return 0;
+}
+
 Session::Session(int socket)
 {
     m_isLogin = -1;
@@ -45,6 +91,7 @@ int Session::readEvent()
     default:
         break;
     }
+    printf("ret:%d\n",ret);
     if (ret == RET_AGAIN)
         return readEvent();
     return ret;
@@ -68,8 +115,18 @@ int Session::recvHead()
     m_readPos += len;
     if (m_readPos == m_bufLen)
     {
+        //蓝星头
+        DeMessageHead *tmp = (DeMessageHead*)m_head;
+        if(strncmp(tmp->mark,"DE",2)!=0){
+            LOGINFO("mark:%s ,length:%d\n",tmp->mark,tmp->length);
+            m_bufLen = sizeof(DeMessageHead);
+            m_readPos = 0;
+            m_type = RECV_HEAD;
+            return RET_AGAIN;
+        }
         m_type = RECV_BODY;
         int bufLen = ((DeMessageHead *)m_head)->length;
+        // if(bufLen)
         m_body = new char[bufLen];
 
         assert(m_body != NULL);
@@ -105,7 +162,8 @@ int Session::recvBody()
         handleMsgBase();
         m_bufLen = 0;
         m_isFinish = true;
-        return RET_AGAIN;
+        // 读取完成后不需要继续读
+        // return RET_AGAIN;
     }
     return RET_OK;
 }
@@ -170,6 +228,7 @@ int Session::handleMsg(recvMsg *rMsg)
             break;
     }
     delete rMsg;
+    return 0;
 }
 
 /**
@@ -220,7 +279,7 @@ void Session::cleanSession(){
             free(delUserInfo);
             delUserInfo =NULL;
         }
-        LOGINFO("会话关闭成功..\n在线用户数量:%d\n",g_UserInfoMap.size());
+        LOGINFO("会话关闭成功..\n在线用户数量:%lu\n",g_UserInfoMap.size());
     }
 }
 
@@ -257,6 +316,7 @@ int Session::handleRegiste(void*arg,void* msg){
     g_AccountInfoMap.insert(std::make_pair(registInfoResp.m_account,registInfo));
     LOGINFO("account:%d,注册成功..\n",registInfoResp.m_account);
     sendMsg(pthis->m_socket,&registInfoResp,sizeof(RegistInfoResp),CommandEnum_Registe);
+    return 0;
 }
 
 int Session::handleLogin(void*arg,void*msg){
@@ -299,7 +359,7 @@ int Session::handleLogin(void*arg,void*msg){
             if( iter!= g_GroupCharInfoMap.end()){
                 GroupChatInfo* info = iter->second;
                 info->m_size++;
-                LOGINFO("current group size:%d\n",g_GroupCharInfoMap.size());
+                LOGINFO("current group size:%lu\n",g_GroupCharInfoMap.size());
             }
             else{
                 //第一次添加往群信息表中插入群信息
@@ -319,7 +379,7 @@ int Session::handleLogin(void*arg,void*msg){
             }
             //发送响应,告诉客户端你登录成功了
             sendMsg(pthis->m_socket,NULL, 0, CommandEnum_Login, RET_OK);
-            LOGINFO("登录成功..\n在线用户数量:%d\n",g_UserInfoMap.size());
+            LOGINFO("登录成功..\n在线用户数量:%lu\n",g_UserInfoMap.size());
             pthis->noticeUserLogin(userInfo);
         }
         else
@@ -328,6 +388,7 @@ int Session::handleLogin(void*arg,void*msg){
             LOGINFO("密码错误..  password:%s\n",iter->second->m_password);
         }
     }
+    return 0;
 }
 
 int Session::handleLogout(void*arg,void*msg){
@@ -336,6 +397,7 @@ int Session::handleLogout(void*arg,void*msg){
         pthis->cleanSession();
         pthis->m_isLogin = -1;
     }
+    return 0;
 }
 
 int Session::handleGroupChat(void *arg, void *msg){
@@ -361,6 +423,7 @@ int Session::handleGroupChat(void *arg, void *msg){
             sendMsg(iter->second->m_socket,msg,sizeof(GroupChatReq) + groupChatReq->m_msgLen, CommandEnum_GroupChat);
         }
     }
+    return 0;
 }
 
 int Session::handlePrivateChat(void*msg){
@@ -401,6 +464,7 @@ int Session::handlePrivateChat(void*msg){
 
     if(buf!=NULL)
         free(buf);
+    return 0;
 }
 /**
  * @brief 获取群列表，这里需要修改，具体获取那个人的群聊列表
@@ -422,6 +486,7 @@ int Session::handleGetGroupList(void*msg){
         memmove(pGroupChatInfo->m_groupName, curGroupChatInfo->m_groupName, sizeof(curGroupChatInfo->m_groupName));
     }
     sendMsg(m_socket, p, size, CommandEnum_GetGroupList);
+    return 0;
 }
 
 /**
@@ -451,6 +516,7 @@ int Session::handleGetGroupInfo(void *msg)
         free(p);
         p = NULL;
     }
+    return 0;
 }
 
 int Session::handleGetFriendInfo(void* msg){
@@ -480,9 +546,10 @@ int Session::handleGetFriendInfo(void* msg){
         char *p = (char *)malloc(size);
         GetFriendInfoResp *pResp = (GetFriendInfoResp *)p;
         pResp->m_size = 0;
-        LOGINFO("account:%d not has friends\n");
+        LOGINFO("account:%d not has friends\n",m_account);
         sendMsg(m_socket, p, size, CommandEnum_GetFriendInfo);
     }
+    return 0;
 }
 
 /**
@@ -574,6 +641,7 @@ int Session::handleAddFriendReq(void*msg){
         //给客户端发送请求成功的信息,告诉客户端请求被受理了
         sendMsg(m_socket, NULL, 0, CommandEnum_AddFriend, 0);
     }
+    return 0;
 }
 
 /**
@@ -691,6 +759,7 @@ int Session::handleAddFriendResp(void*msg){
     else{
         LOGINFO("==========出错了==========\n");
     }
+    return 0;
 }
 
 

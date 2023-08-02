@@ -3,6 +3,9 @@
 #include "common.h"
 #include "chatBase.h"
 #include <stdio.h>
+#include <map>
+#include <thread>
+#include <mutex>
 
 typedef enum
 {
@@ -77,4 +80,35 @@ private:
     bool m_isFinish;        //接收消息,用来判断是否接收完全
     // mapFriendInfo m_friendInfoMap;
 };
+using SessionPtr = std::shared_ptr<Session>;
+using SessionMap = std::map<int, SessionPtr>;
+using SessionMapIter = std::map<int,shared_ptr<Session>>::iterator;
+class SessionMng{
+public:
+    SessionMng(){
+
+    }
+    ~SessionMng(){
+
+    }
+public:
+    static std::shared_ptr<SessionMng> Instance()
+    {
+        if(!m_pSessionMng)
+        {
+            m_pSessionMng = std::make_shared<SessionMng>();
+        }
+        return m_pSessionMng;
+    };
+
+public:
+    int addSession(SessionPtr newSession,int fd);
+    int delSession(int fd);
+    int handleSession(int fd);
+private:
+    SessionMap m_gSessionMap;                           // 全局会话 map 表
+    std::mutex m_gSessionMapLock;                       // 全局会话 map 锁
+    static std::shared_ptr<SessionMng> m_pSessionMng; 
+};
+
 #endif  
