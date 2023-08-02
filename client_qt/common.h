@@ -45,7 +45,7 @@ using namespace std;
 /**
   * 暂时用宏定义代替，后续通过读取配置文件获取
   */
-#define SERVER_ADDR "49.234.35.128" //这是我的服务器地址，需要修改为你启动服务器的地址
+#define SERVER_ADDR "172.19.0.51" //这是我的服务器地址，需要修改为你启动服务器的地址
 #define SERVER_PORT 8000
 
 //De 协议包头

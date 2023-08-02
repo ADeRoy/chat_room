@@ -24,5 +24,16 @@
         <file>src/wechat.png</file>
         <file>src/wechat2.png</file>
         <file>src/wechat3.png</file>
+        <file>src/头像/bianchenxuexijidi.jpg</file>
+        <file>src/头像/blownbear.jpg</file>
+        <file>src/头像/dog.jpg</file>
+        <file>src/头像/duolaameng.jpg</file>
+        <file>src/头像/haimianbob.jpg</file>
+        <file>src/头像/icebear.jpg</file>
+        <file>src/头像/panda.jpg</file>
+        <file>src/头像/Simpson.jpg</file>
+        <file>src/头像/tom.jpg</file>
+        <file>src/头像/xiaoxin.jpg</file>
+        <file>src/3.gif</file>
     </qresource>
 </RCC>

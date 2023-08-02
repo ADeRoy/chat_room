@@ -19,6 +19,8 @@ SOURCES += \
     Session.cpp \
     addfrienddialog.cpp \
     chatinfomanage.cpp \
+    custom/ToolBoxPow.cpp \
+    custom/chatmessage.cpp \
     logindlg.cpp \
     main.cpp \
     registdlg.cpp \
@@ -29,6 +31,8 @@ HEADERS += \
     addfrienddialog.h \
     chatinfomanage.h \
     common.h \
+    custom/ToolBoxPow.h \
+    custom/chatmessage.h \
     logindlg.h \
     registdlg.h \
     widget.h

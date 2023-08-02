@@ -9,6 +9,7 @@
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::Widget)
+    , m_curCheckedUser(0)
 {
     ui->setupUi(this);
     InitUI();
@@ -168,6 +169,9 @@ void Widget::Init()
 
     getGroupList();
     getFriendList();
+
+    connect(ui->userListWidget,SIGNAL(SignalUserGroupButtonClicked(int)),this,SLOT(SlotUserGroupButtonClicked(int)));
+
 }
 
 
@@ -203,8 +207,8 @@ static int stackWidgetIndex = 0;
 
 void Widget::Init_Group_Info(GroupChatInfo* groupInfo)
 {
-    ui->listWidget_info->addItem(QString("[群][%1]").arg(groupInfo->m_groupName));
-
+//    ui->listWidget_info->addItem(QString("[群][%1]").arg(groupInfo->m_groupName));
+    ui->userListWidget->AddWXWidget(groupInfo->m_groupName,":/src/头像/bianchenxuexijidi.jpg");
     ui->stackedWidget_Msg->setCurrentIndex(stackWidgetIndex++);
     if(stackWidgetIndex >=ui->stackedWidget_Msg->count())
     {
@@ -230,13 +234,14 @@ void Widget::Init_Group_Info(GroupChatInfo* groupInfo)
     chatInfo->m_type = TYPE_GROUP_CHAT;
 
     m_chatWidgetInfoList.push_back(chatInfo);
-
-    ui->listWidget_info->setCurrentRow(stackWidgetIndex - 1);
+    m_curCheckedUser = stackWidgetIndex - 1;
+//    ui->listWidget_info->setCurrentRow(stackWidgetIndex - 1);
 }
 
 void Widget::Init_Friend_Info(FriendInfo *friendInfo)
 {
-    ui->listWidget_info->addItem(QString("[好友][%1]").arg(friendInfo->m_userName));
+//    ui->listWidget_info->addItem(QString("[好友][%1]").arg(friendInfo->m_userName));
+    ui->userListWidget->AddWXWidget(friendInfo->m_userName,":/src/头像/icebear.jpg");
 
     ui->stackedWidget_Msg->setCurrentIndex(stackWidgetIndex++);
     if(stackWidgetIndex >=ui->stackedWidget_Msg->count())
@@ -264,7 +269,8 @@ void Widget::Init_Friend_Info(FriendInfo *friendInfo)
     chatInfo->m_type = TYPE_PRIVATE_CHAT;
 
     m_chatWidgetInfoList.push_back(chatInfo);
-    ui->listWidget_info->setCurrentRow(stackWidgetIndex - 1);
+    m_curCheckedUser = stackWidgetIndex - 1;
+//    ui->listWidget_info->setCurrentRow(stackWidgetIndex - 1);
 }
 
 void Widget::writeMsg(void *buf, int bufLen, int type, int error,int mode)
@@ -379,12 +385,23 @@ int Widget::handleGroupChat(void *msg)
         mapChatWidget::iterator iter = m_chatWigetMap.find(groupChatReq->m_GroupAccount);
         if(iter!=m_chatWigetMap.end()){
             QListWidget* chatWidget = iter->second;
-            QListWidgetItem* item = new QListWidgetItem;
-            //这里转码，中文名称显示乱码
-            item->setText(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") + " " + QString("[%1][%2]:%3").arg(userInfo->m_account)
-                          .arg(QString(userInfo->m_userName)).arg(buf));
-            item->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-            chatWidget->addItem(item);
+//            QListWidgetItem* item = new QListWidgetItem;
+
+//            //这里转码，中文名称显示乱码
+//            item->setText(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") + " " + QString("[%1][%2]:%3").arg(userInfo->m_account)
+//                          .arg(QString(userInfo->m_userName)).arg(buf));
+//            item->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+//            chatWidget->addItem(item);
+
+            // 用户自己发送的消息
+            QString time = QString::number(QDateTime::currentDateTimeUtc().toTime_t());
+            ChatMessage *message = new ChatMessage(chatWidget);
+            QListWidgetItem *item = new QListWidgetItem();
+            dealMessageTime(chatWidget,time);
+            dealMessage(chatWidget,message, item, buf, time, userInfo->m_userName ,ChatMessage::User_She);
+            // 设置消息发送成功
+            message->setTextSuccess();
+
             ChatLogInfo()<<"["<<groupChatInfo->m_groupName<<"]"<<"["<<userInfo->m_userName<<"]"<<buf;
         }
     }
@@ -418,12 +435,21 @@ int Widget::handlePrivateChat(void *msg)
         mapChatWidget::iterator iter = m_chatWigetMap.find(userInfo->m_account);
         if(iter!=m_chatWigetMap.end()){
             QListWidget* chatWidget = iter->second;
-            QListWidgetItem* item = new QListWidgetItem;
+//            QListWidgetItem* item = new QListWidgetItem;
             //这里转码，中文名称显示乱码
-            item->setText(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") + " " + QString("[%1][%2]:%3").arg(friendInfo->m_account)
-                          .arg(QString(friendInfo->m_userName)).arg(buf));
-            item->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-            chatWidget->addItem(item);
+//            item->setText(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") + " " + QString("[%1][%2]:%3").arg(friendInfo->m_account)
+//                          .arg(QString(friendInfo->m_userName)).arg(buf));
+//            item->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+//            chatWidget->addItem(item);
+
+            QString time = QString::number(QDateTime::currentDateTimeUtc().toTime_t());
+            ChatMessage *message = new ChatMessage(chatWidget);
+            QListWidgetItem *item = new QListWidgetItem();
+            dealMessageTime(chatWidget,time);
+            dealMessage(chatWidget,message, item, buf, time, friendInfo->m_userName ,ChatMessage::User_She);
+            // 设置消息发送成功
+            message->setTextSuccess();
+
             ChatLogInfo()<<"["<<friendInfo->m_userName<<"]"<<buf;
         }
     }
@@ -546,6 +572,43 @@ int Widget::handleAddFriendResp(void *msg)
     return 0;
 }
 
+void Widget::dealMessage(QListWidget* listWidget,ChatMessage *messageW, QListWidgetItem *item, QString text, QString time, QString ip ,ChatMessage::User_Type type) //用户发送文本
+{
+    listWidget->addItem(item);
+    messageW->setFixedWidth(listWidget->width());
+    QSize size = messageW->fontRect(text);
+    item->setSizeHint(size);
+    messageW->setText(text, time, size, ip, type);
+    listWidget->setItemWidget(item, messageW);
+    return;
+}
+void Widget::dealMessageTime(QListWidget* listWidget,QString curMsgTime) //处理时间
+{
+    bool isShowTime = false;
+    if(listWidget->count() > 0) {
+        QListWidgetItem* lastItem = listWidget->item(listWidget->count() - 1);
+        ChatMessage* messageW = (ChatMessage *)listWidget->itemWidget(lastItem);
+        int lastTime = messageW->time().toInt();
+        int curTime = curMsgTime.toInt();
+        qDebug() << "curTime lastTime:" << curTime - lastTime;
+        isShowTime = ((curTime - lastTime) > 60); // 两个消息相差一分钟
+//        isShowTime = true;
+    } else {
+        isShowTime = true;
+    }
+    if(isShowTime) {
+        ChatMessage* messageTime = new ChatMessage(listWidget);
+        QListWidgetItem* itemTime = new QListWidgetItem();
+        listWidget->addItem(itemTime);
+        QSize size = QSize(listWidget->width() , 40);
+        messageTime->resize(size);
+        itemTime->setSizeHint(size);
+        messageTime->setText(curMsgTime, curMsgTime, size);
+        listWidget->setItemWidget(itemTime, messageTime);
+    }
+    return;
+}
+
 void Widget::on_pushBtn_send_clicked()
 {
     ChatLogInfo()<<"on_pushBtn_send_clicked";
@@ -553,7 +616,8 @@ void Widget::on_pushBtn_send_clicked()
         ChatLogInfo()<<"Msg is null";
         return;
     }
-    int currentRow = ui->listWidget_info->currentRow();
+//    int currentRow = ui->listWidget_info->currentRow();
+    int currentRow = this->m_curCheckedUser;
     if(currentRow < 0){
         ChatLogInfo()<<"未选择聊天窗口";
         return;
@@ -592,9 +656,19 @@ void Widget::on_pushBtn_send_clicked()
         return;
     }
     ui->textEdit->clear();
-    QString msg;
-    msg.sprintf("[%d][%s]%s",m_userInfo.m_account,m_userInfo.m_userName,str.toStdString().c_str());
-    chatWidget->addItem(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") + " " + msg);
+//    QString msg;
+//    msg.sprintf("[%d][%s]%s",m_userInfo.m_account,m_userInfo.m_userName,str.toStdString().c_str());
+//    chatWidget->addItem(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") + " " + msg);
+
+    // 用户自己发送的消息
+    QString time = QString::number(QDateTime::currentDateTimeUtc().toTime_t());
+    ChatMessage *message = new ChatMessage(chatWidget);
+    QListWidgetItem *item = new QListWidgetItem();
+    dealMessageTime(chatWidget,time);
+    dealMessage(chatWidget,message, item, str, time, m_userInfo.m_userName ,ChatMessage::User_Me);
+    // 设置消息发送成功
+    message->setTextSuccess();
+
 
     ChatLogInfo()<<"["<<m_userInfo.m_userName<<"]["<<m_userInfo.m_account<<"]"<<str<<",size:"<<str.toStdString().size();
     //发送消息
@@ -616,7 +690,6 @@ void Widget::on_pushBtn_send_clicked()
         }
     }
     else if(chatInfo->m_type == TYPE_PRIVATE_CHAT){
-
         //私聊
         PrivateChatReq *privateChatReq;
         char *p = (char *)malloc(sizeof(PrivateChatReq) + str.toStdString().size());
@@ -633,6 +706,14 @@ void Widget::on_pushBtn_send_clicked()
             p = NULL;
         }
     }
+}
+
+void Widget::SlotUserGroupButtonClicked(int index)
+{
+    m_curCheckedUser = index;
+    qDebug()<<"checked index:"<<index;
+    ui->stackedWidget_Msg->setCurrentIndex(m_curCheckedUser);
+    ChatLogInfo()<<"current Row chicked.."<<m_curCheckedUser;
 }
 
 int Widget::handleMsg(recvMsg *rMsg)
@@ -721,13 +802,13 @@ void Widget::on_pushButton_addFriend_clicked()
     }
 }
 
-void Widget::on_listWidget_info_itemClicked(QListWidgetItem *item)
-{
-    int currentRow = ui->listWidget_info->currentRow();
-    ui->stackedWidget_Msg->setCurrentIndex(currentRow);
-    ChatLogInfo()<<item->text()<<"current Row chicked.."<<currentRow;
+//void Widget::on_listWidget_info_itemClicked(QListWidgetItem *item)
+//{
+//    int currentRow = ui->listWidget_info->currentRow();
+//    ui->stackedWidget_Msg->setCurrentIndex(currentRow);
+//    ChatLogInfo()<<item->text()<<"current Row chicked.."<<currentRow;
 
-}
+//}
 
 void Widget::on_pushBtn_close_clicked()
 {

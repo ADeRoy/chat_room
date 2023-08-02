@@ -3,6 +3,8 @@
 
 #include <QDialog>
 #include <QMouseEvent>
+#include <windows.h>
+#include <windowsx.h>
 #include "registdlg.h"
 
 namespace Ui {
