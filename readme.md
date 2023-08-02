@@ -6,6 +6,12 @@
 
 ### server
 
+- [x] 增加多路复用select/poll/epoll支持
+- [ ] 视频通话功能开发
+- [ ] 聊天信息缓存
+
+
+
 测试服务器，ubuntu18.04
 
 ~~~c
@@ -45,6 +51,11 @@ make
 
 ### client-qt
 
+- [x] 聊天气泡功能添加
+- [x] 列表显示头像功能添加
+- [ ] 聊天记录保存功能添加
+- [ ] ......
+
 操作系统:win10；qt版本: 5.9.9；
 
 qmake编译，直接双击 `.pro` 文件，即可编译，无需任何配置
@@ -65,11 +76,11 @@ qmake编译，直接双击 `.pro` 文件，即可编译，无需任何配置
 
 + 聊天界面
 
-![聊天界面](https://img-blog.csdnimg.cn/7a6d203c6b9748a49c8aef4ef68340e2.jpg)
+![聊天界面](https://img-blog.csdnimg.cn/f863b7ee29b74739bf4f8e5cc533f5e0.png)
 
 
 + 添加好友界面
-![添加好友界面](https://img-blog.csdnimg.cn/dab3bb85e38f4a63a29766b2ef74d9c8.png)
+![添加好友界面](https://img-blog.csdnimg.cn/ecb3a4ab383c442a8e6afee04ac35bfc.png)
 
 
 
@@ -79,11 +90,11 @@ qmake编译，直接双击 `.pro` 文件，即可编译，无需任何配置
 + 登录账号
 + 添加好友
 + 群聊
-![群聊](https://img-blog.csdnimg.cn/addb8ab2aad6457483374f31b0443bcb.png)
+![群聊](https://img-blog.csdnimg.cn/71a5bf7bc7854e67b8da3016c6f73d28.png)
 
 + 私聊
 
-![私聊](https://img-blog.csdnimg.cn/ae10b2edf19f45f789aaf711a85c9a5b.png)
+![私聊](https://img-blog.csdnimg.cn/314d7348e2254f4cb9e6e9b1433816a4.png)
 
 
 后续UI美化以及功能增加持续更新，关注微信公众号「编程学习基地」最快咨询..
