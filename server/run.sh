@@ -1,0 +1,1 @@
+docker run --rm --name chatroom-v1.0.1 -p 8000:8000 -v /host/path:/app/data -d chatroom
